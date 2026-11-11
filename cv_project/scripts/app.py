@@ -19,9 +19,21 @@ from torchvision import models, transforms
 from flask import Flask, request, jsonify, send_from_directory
 
 # ─── Константы ─────────────────────────────────────────────────────────────────
-BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODELS_DIR = os.path.join(BASE_DIR, "cv_project", "models")
-STATIC_DIR = BASE_DIR                     # index.html лежит тут
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPTS_DIR)
+ROOT_DIR    = os.path.dirname(PROJECT_DIR)
+
+# Static dir supports both repo root and cv_project
+if os.path.exists(os.path.join(ROOT_DIR, "cv_demo.html")):
+    STATIC_DIR = ROOT_DIR
+else:
+    STATIC_DIR = PROJECT_DIR
+
+if os.path.exists(os.path.join(PROJECT_DIR, "models")):
+    MODELS_DIR = os.path.join(PROJECT_DIR, "models")
+else:
+    MODELS_DIR = os.path.join(ROOT_DIR, "cv_project", "models")
+BASE_DIR = ROOT_DIR
 CLASSES    = ["cup", "headphones", "keys", "pen"]
 CLASS_RU   = {"cup": "Кружка", "headphones": "Наушники", "keys": "Ключи", "pen": "Ручка"}
 IMG_SIZE   = 224
@@ -294,6 +306,7 @@ if __name__ == "__main__":
     print(f"[CV Demo] Запуск на http://localhost:5050")
     print(f"[CV Demo] Устройство: {device}")
     app.run(host="0.0.0.0", port=5050, debug=False)
+
 
 
 
