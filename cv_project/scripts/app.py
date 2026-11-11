@@ -4,6 +4,7 @@ Assignment 2 — Flask Backend: CV Demo с Grad-CAM объяснением
 """
 
 import os
+import time
 import io
 import json
 import base64
@@ -27,16 +28,9 @@ IMG_SIZE   = 224
 
 def _get_device():
     """
-    Проверяем совместимость CUDA. RTX 5050 (sm_120) не поддерживается
-    текущим PyTorch — используем CPU.
+    RTX 5050 Laptop GPU (sm_120) не поддерживается установленным PyTorch cu124.
+    Принудительно используем CPU для стабильного и быстрого инференса (~35 ms).
     """
-    if torch.cuda.is_available():
-        try:
-            # Пробный тензор чтобы проверить реальную совместимость
-            torch.zeros(1).cuda()
-            return torch.device("cuda:0")
-        except Exception:
-            pass
     return torch.device("cpu")
 
 device = _get_device()
@@ -162,13 +156,12 @@ def tensor_to_pil(tensor):
 
 
 def apply_colormap(cam_np):
-    """Применяет цветовую карту jet к Grad-CAM массиву."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.cm as cm
-    colormap = cm.get_cmap("jet")
-    heatmap = colormap(cam_np)[:, :, :3]  # RGBA → RGB
-    return (heatmap * 255).astype(np.uint8)
+    """Применяет цветовую карту jet через OpenCV (без зависимости от версий matplotlib)."""
+    import cv2
+    cam_uint8 = (np.clip(cam_np, 0, 1) * 255).astype(np.uint8)
+    heatmap_bgr = cv2.applyColorMap(cam_uint8, cv2.COLORMAP_JET)
+    heatmap_rgb = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2RGB)
+    return heatmap_rgb
 
 
 def overlay_heatmap(original_pil, cam_np, alpha=0.45):
@@ -189,6 +182,13 @@ def pil_to_base64(pil_img, fmt="JPEG"):
 
 # ─── Flask App ─────────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="")
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
 
 
 @app.route("/")
@@ -294,4 +294,8 @@ if __name__ == "__main__":
     print(f"[CV Demo] Запуск на http://localhost:5050")
     print(f"[CV Demo] Устройство: {device}")
     app.run(host="0.0.0.0", port=5050, debug=False)
+
+
+
+
 
